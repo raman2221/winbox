@@ -1,4 +1,5 @@
-# Builds the same self-contained release zip as .github/workflows/release.yml, into dist\.
+# Builds the self-contained release zip and its .sha256 into dist\.
+# .github/workflows/release.yml runs this same script, so a local build matches the published one.
 #
 #   .\scripts\package.ps1
 
@@ -20,7 +21,20 @@ function Invoke-Publish {
 function New-ReleaseZip {
     New-Item -ItemType Directory -Force -Path $distDir | Out-Null
     if (Test-Path $zipPath) { Remove-Item -Path $zipPath -Force }
-    Compress-Archive -Path (Join-Path $publishDir '*') -DestinationPath $zipPath
+    Add-Type -AssemblyName System.IO.Compression, System.IO.Compression.FileSystem
+    $zip = [IO.Compression.ZipFile]::Open($zipPath, 'Create')
+    try {
+        Get-ChildItem -Path $publishDir -Recurse -File | ForEach-Object { Add-ZipEntry $zip $_.FullName }
+    } finally {
+        $zip.Dispose()
+    }
+}
+
+function Add-ZipEntry($zip, [string] $file) {
+    # Entry names are built by hand because Windows PowerShell's Compress-Archive and ZipFile.CreateFromDirectory
+    # store "guest\..." with backslashes, which the zip format forbids and non-Windows unzip tools mishandle.
+    $entryName = $file.Substring($publishDir.Length).TrimStart('\').Replace('\', '/')
+    [IO.Compression.ZipFileExtensions]::CreateEntryFromFile($zip, $file, $entryName, 'Optimal') | Out-Null
 }
 
 function Write-ReleaseHash {

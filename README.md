@@ -45,7 +45,7 @@ whatever window has focus, and can see everything you have open. winbox gives th
 
 - **Separate desktop.** The agent works in its own Windows session inside Windows Sandbox, not on your screen.
 - **Hands off your input.** The agent never moves the host's mouse, presses the host's keys or reads the host's
-  clipboard. Clipboard, audio, camera and printer redirection are switched off.
+  clipboard. Clipboard, microphone, camera and printer redirection are switched off.
 - **Easy to follow, easy to step in.** Watch in the Sandbox window, or use `winbox view` in Windows Terminal, where
   your clicks and typing pass through to the sandbox.
 - **Clean every time.** Windows Sandbox is disposable. Close it and everything inside is gone.
@@ -85,12 +85,14 @@ terminal afterwards so the PATH change takes effect.
 
 1. Download `winbox-win-x64.zip` and `winbox-win-x64.zip.sha256` from the
    [latest release](https://github.com/raman2221/winbox/releases/latest).
-2. Check the hash: `(Get-FileHash .\winbox-win-x64.zip -Algorithm SHA256).Hash` should match the `.sha256` file.
+2. Check the hash: `(Get-FileHash .\winbox-win-x64.zip -Algorithm SHA256).Hash` should match the `.sha256` file
+   (PowerShell prints it in upper case; the file has it in lower case).
 3. Extract the zip anywhere and add that folder to your PATH. Keep the `guest` folder next to `winbox.exe`.
 
 ### Build from source
 
-You need the [.NET 10 SDK](https://dotnet.microsoft.com/download).
+You need the [.NET 10 SDK](https://dotnet.microsoft.com/download) and, for the guest helper, the .NET Framework 4.8
+targeting pack (included with Visual Studio's .NET desktop workload, or install the .NET Framework 4.8 Developer Pack).
 
 ```powershell
 git clone https://github.com/raman2221/winbox
@@ -118,7 +120,11 @@ Register the MCP server. `winbox mcp-config` prints the exact command for your i
 
 ```powershell
 winbox mcp-config
-# claude mcp add winbox -- "C:\Users\you\AppData\Local\Programs\winbox\winbox.exe" mcp
+# Claude Code:
+#
+#     claude mcp add winbox -- "C:\Users\you\AppData\Local\Programs\winbox\winbox.exe" mcp
+#
+# ...followed by the same server as an mcpServers JSON block for other clients.
 ```
 
 Run the printed command, then ask Claude to do something in the sandbox. It can call `start_sandbox` itself if the
@@ -127,9 +133,13 @@ sandbox isn't running yet.
 For better results, install the bundled skill, which teaches the agent an observe, act, verify loop:
 
 ```powershell
-New-Item -ItemType Directory -Force "$HOME\.claude\skills" | Out-Null
-Copy-Item -Recurse .\skills\winbox "$HOME\.claude\skills\winbox"
+$skill = "$HOME\.claude\skills\winbox"
+$url = 'https://raw.githubusercontent.com/raman2221/winbox/main/skills/winbox/SKILL.md'
+New-Item -ItemType Directory -Force $skill | Out-Null
+Invoke-WebRequest $url -OutFile "$skill\SKILL.md" -UseBasicParsing
 ```
+
+From a clone of this repo you can copy it instead: `Copy-Item .\skills\winbox\SKILL.md "$skill\SKILL.md"`.
 
 ## Use it with other MCP clients
 
@@ -164,7 +174,7 @@ instructions.
 | Tool | What it does |
 | --- | --- |
 | `screenshot` | Capture the sandbox screen. |
-| `click(x, y, button="left", clicks=1)` | Click at a point. `button` is `left`, `right` or `middle`; `clicks=2` double-clicks. |
+| `click(x, y, button="left", clicks=1)` | Click at a point. `button` is `left`, `right` or `middle`; `clicks` is 1 to 3; `clicks=2` double-clicks. |
 | `move_mouse(x, y)` | Move the pointer. |
 | `drag(fromX, fromY, toX, toY)` | Press, move and release. |
 | `scroll(x, y, notches)` | Scroll the wheel at a point. Positive is up, negative is down. |
@@ -181,6 +191,7 @@ Coordinates are screen pixels measured from the top-left corner of the latest sc
 
 | Command | Description |
 | --- | --- |
+| `winbox help` | List every command. Running `winbox` with no arguments does the same. |
 | `winbox setup` | Check that this PC can run Windows Sandbox and explain how to enable it. |
 | `winbox start [--memory <MB>] [--offline]` | Write the sandbox config and launch Windows Sandbox. `--offline` disables networking. |
 | `winbox stop` | Close the sandbox. |
@@ -191,9 +202,9 @@ Coordinates are screen pixels measured from the top-left corner of the latest sc
 | `winbox move <x> <y>` | Move the pointer. |
 | `winbox drag <x1> <y1> <x2> <y2>` | Drag from one point to another. |
 | `winbox scroll <x> <y> <notches>` | Scroll at a point (positive is up). |
-| `winbox type <text>` | Type text. |
+| `winbox type <text...>` | Type text. The remaining arguments are joined with spaces. |
 | `winbox key <combo>` | Press a key combo, such as `ctrl+shift+esc`. |
-| `winbox run <command>` | Launch a program inside the sandbox. |
+| `winbox run <command line...>` | Launch a program inside the sandbox, e.g. `winbox run notepad`. |
 | `winbox mcp` | Run the MCP server on stdio. |
 | `winbox mcp-config` | Print the `claude mcp add` command for this install. |
 
@@ -244,7 +255,7 @@ winbox doesn't open any network connection between host and guest. The shared fo
   desktop, but no isolation is perfect.
 - **Networking is on by default.** The guest can reach the internet *and your local network*. For untrusted tasks,
   start with `winbox start --offline` (or `start_sandbox(offline=true)`).
-- Host clipboard, audio, camera and printer redirection are disabled.
+- Host clipboard, microphone, camera and printer redirection are disabled.
 - The `control` folder is the one writable path between guest and host. Anything running in the sandbox can write
   files there.
 - Don't give the agent real credentials or secrets to type into the sandbox. Anything typed there may be visible in

@@ -3,7 +3,7 @@
 #   irm https://github.com/raman2221/winbox/releases/latest/download/install.ps1 | iex
 #
 # Everything lives inside functions so that running this through `iex` doesn't leave
-# variables or preference changes behind in the caller's session.
+# variables or preference changes behind in the caller's session (only these function definitions).
 
 function Get-WinboxDownload([string] $url, [string] $destination) {
     Invoke-WebRequest -Uri $url -OutFile $destination -UseBasicParsing
@@ -18,8 +18,20 @@ function Assert-WinboxHash([string] $zipPath, [string] $hashPath) {
     }
 }
 
+function Assert-WinboxNotRunning([string] $installDir) {
+    # Checked before deleting anything, so a running winbox.exe can't leave a half-removed install behind.
+    $exe = Join-Path $installDir 'winbox.exe'
+    if (-not (Test-Path $exe)) { return }
+    try {
+        [IO.File]::Open($exe, 'Open', 'ReadWrite', 'None').Dispose()
+    } catch {
+        throw "winbox.exe is in use. Close any running winbox.exe (including MCP servers) and retry."
+    }
+}
+
 function Clear-WinboxInstallDir([string] $installDir) {
     if (-not (Test-Path $installDir)) { return }
+    Assert-WinboxNotRunning $installDir
     try {
         Get-ChildItem -Path $installDir -Force | Remove-Item -Recurse -Force
     } catch {
@@ -34,18 +46,37 @@ function Expand-WinboxZip([string] $zipPath, [string] $installDir) {
 }
 
 function Test-PathListContains([string] $pathList, [string] $folder) {
-    $entries = $pathList -split ';' | ForEach-Object { $_.Trim().TrimEnd('\') }
+    $entries = $pathList -split ';' | ForEach-Object {
+        [Environment]::ExpandEnvironmentVariables($_).Trim().TrimEnd('\')
+    }
     return $entries -contains $folder.TrimEnd('\')
 }
 
+function Get-UserPathUnexpanded {
+    # Read without expanding, so entries such as %USERPROFILE%\... are written back unchanged.
+    $key = Get-Item -Path 'HKCU:\Environment'
+    return [string] $key.GetValue('Path', '', 'DoNotExpandEnvironmentNames')
+}
+
+function Set-UserPathExpandable([string] $userPath) {
+    # [Environment]::SetEnvironmentVariable would store PATH as REG_SZ and flatten every %VARIABLE% entry.
+    Set-ItemProperty -Path 'HKCU:\Environment' -Name 'Path' -Value $userPath -Type ExpandString
+    # A direct registry write doesn't notify Explorer; setting and clearing a throwaway variable does.
+    [Environment]::SetEnvironmentVariable('WINBOX_INSTALL_REFRESH', '1', 'User')
+    [Environment]::SetEnvironmentVariable('WINBOX_INSTALL_REFRESH', $null, 'User')
+}
+
+function Add-WinboxToSessionPath([string] $installDir) {
+    if (Test-PathListContains $env:Path $installDir) { return }
+    $env:Path = "$($env:Path.TrimEnd(';'));$installDir"
+}
+
 function Add-WinboxToUserPath([string] $installDir) {
-    $userPath = [Environment]::GetEnvironmentVariable('Path', 'User')
-    if ($null -eq $userPath) { $userPath = '' }
+    Add-WinboxToSessionPath $installDir
+    $userPath = Get-UserPathUnexpanded
     if (Test-PathListContains $userPath $installDir) { return $false }
 
-    $newPath = (@($userPath.TrimEnd(';'), $installDir) | Where-Object { $_ }) -join ';'
-    [Environment]::SetEnvironmentVariable('Path', $newPath, 'User')
-    $env:Path = "$env:Path;$installDir"
+    Set-UserPathExpandable ((@($userPath.TrimEnd(';'), $installDir) | Where-Object { $_ }) -join ';')
     return $true
 }
 

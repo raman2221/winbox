@@ -13,40 +13,73 @@ internal sealed class GuestServer(ControlPaths paths, CommandExecutor executor, 
     private static readonly TimeSpan PollInterval = TimeSpan.FromMilliseconds(10);
     private static readonly TimeSpan HeartbeatInterval = TimeSpan.FromSeconds(1);
 
-    private DateTime _lastHeartbeat = DateTime.MinValue;
+    // Longer than the host's reply timeout: anything older was abandoned, and replaying a stale click is worse
+    // than dropping it.
+    private static readonly TimeSpan RequestExpiry = TimeSpan.FromSeconds(20);
+
+    private readonly GuestLog _log = new(paths.LogFile);
 
     public void Run()
     {
         paths.EnsureCreated();
+        StartHeartbeat();
         while (true)
         {
-            WriteHeartbeatIfDue();
-            HandlePendingRequests();
+            Survive(HandlePendingRequests);
             Thread.Sleep(PollInterval);
         }
     }
 
-    private void WriteHeartbeatIfDue()
+    /// <summary>Beats on its own thread so a long, human-paced action never makes the guest look dead.</summary>
+    private void StartHeartbeat()
     {
-        if (DateTime.UtcNow - _lastHeartbeat < HeartbeatInterval) return;
+        var thread = new Thread(() =>
+        {
+            while (true)
+            {
+                Survive(WriteHeartbeat);
+                Thread.Sleep(HeartbeatInterval);
+            }
+        }) { IsBackground = true, Name = "heartbeat" };
+        thread.Start();
+    }
+
+    private void WriteHeartbeat()
+    {
         var size = screen.Size;
         var status = new GuestStatus(DateTimeOffset.UtcNow, size.Width, size.Height, Version);
         ControlPaths.WriteAtomically(paths.StatusFile, status.Encode());
-        _lastHeartbeat = DateTime.UtcNow;
     }
 
     private void HandlePendingRequests()
     {
-        var requests = Directory.GetFiles(paths.RequestsDir, "*.cmd").OrderBy(File.GetCreationTimeUtc);
-        foreach (var file in requests) HandleRequest(file);
+        var requests = Directory.GetFiles(paths.RequestsDir, "*.cmd").OrderBy(File.GetCreationTimeUtc).ToList();
+        foreach (var file in requests) Survive(() => HandleRequest(file));
     }
 
+    /// <summary>A locked or vanished request file is skipped and retried on the next poll.</summary>
     private void HandleRequest(string file)
     {
         var id = Path.GetFileNameWithoutExtension(file);
+        var isExpired = DateTime.UtcNow - File.GetCreationTimeUtc(file) > RequestExpiry;
         var line = File.ReadAllText(file);
         File.Delete(file);
-        var reply = executor.Execute(paths.ImageFile(id), line);
+        var reply = isExpired ? Reply.Failure("Request expired before the guest reached it") : Execute(id, line);
         ControlPaths.WriteAtomically(paths.ReplyFile(id), reply.Encode());
+    }
+
+    private Reply Execute(string id, string line) => executor.Execute(paths.ImageFile(id), line);
+
+    /// <summary>One bad pass (a locked file, a share hiccup) must never end the helper.</summary>
+    private void Survive(Action step)
+    {
+        try
+        {
+            step();
+        }
+        catch (Exception error)
+        {
+            _log.Write(error);
+        }
     }
 }

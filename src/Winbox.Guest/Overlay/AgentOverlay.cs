@@ -33,9 +33,24 @@ internal sealed class AgentOverlay : IActivityFeedback
     {
         var sprites = new Sprites();
         var timer = new System.Windows.Forms.Timer { Interval = FrameMs };
-        timer.Tick += (_, _) => RenderFrame(sprites, DateTime.UtcNow);
+        timer.Tick += (_, _) => RenderFrameSafely(sprites);
         timer.Start();
         Application.Run(sprites.Context);
+    }
+
+    /// <summary>
+    /// Skips a frame on failure (e.g. GetCursorPos fails while a UAC prompt owns the secure desktop) instead of
+    /// letting WinForms show an unhandled-exception dialog in front of the people watching.
+    /// </summary>
+    private void RenderFrameSafely(Sprites sprites)
+    {
+        try
+        {
+            RenderFrame(sprites, DateTime.UtcNow);
+        }
+        catch (Exception)
+        {
+        }
     }
 
     private void RenderFrame(Sprites sprites, DateTime now)

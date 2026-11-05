@@ -9,21 +9,17 @@ public sealed class GuestClient(ControlPaths paths)
 {
     private static readonly TimeSpan ReplyTimeout = TimeSpan.FromSeconds(15);
     private static readonly TimeSpan PollInterval = TimeSpan.FromMilliseconds(5);
+    private static readonly TimeSpan LivenessCheckInterval = TimeSpan.FromMilliseconds(500);
 
     public GuestStatus? ReadStatus()
     {
-        if (!File.Exists(paths.StatusFile)) return null;
         try
         {
-            return GuestStatus.Decode(File.ReadAllText(paths.StatusFile));
+            return File.Exists(paths.StatusFile) ? GuestStatus.Decode(ControlPaths.ReadShared(paths.StatusFile)) : null;
         }
-        catch (IOException)
+        catch (Exception error) when (error is IOException or UnauthorizedAccessException or ProtocolException)
         {
-            return null; // The guest is mid-rewrite; the next heartbeat will be readable.
-        }
-        catch (ProtocolException)
-        {
-            return null; // An unreadable heartbeat means the guest can't be trusted to answer.
+            return null; // Mid-rewrite or corrupt: either way this heartbeat can't vouch for the guest.
         }
     }
 
@@ -38,10 +34,16 @@ public sealed class GuestClient(ControlPaths paths)
     public async Task<Screenshot> ScreenshotAsync(CancellationToken cancel = default)
     {
         var (id, message) = await RoundTripAsync(new ScreenshotCommand(), cancel);
-        var size = message.Split(' ');
-        var png = await File.ReadAllBytesAsync(paths.ImageFile(id), cancel);
-        File.Delete(paths.ImageFile(id));
-        return new Screenshot(png, int.Parse(size[0]), int.Parse(size[1]));
+        try
+        {
+            var size = message.Split(' ');
+            var png = await File.ReadAllBytesAsync(paths.ImageFile(id), cancel);
+            return new Screenshot(png, int.Parse(size[0]), int.Parse(size[1]));
+        }
+        finally
+        {
+            TryDelete(paths.ImageFile(id));
+        }
     }
 
     private async Task<(string Id, string Message)> RoundTripAsync(Command command, CancellationToken cancel)
@@ -56,15 +58,53 @@ public sealed class GuestClient(ControlPaths paths)
 
     private async Task<Reply> WaitForReplyAsync(string id, CancellationToken cancel)
     {
-        var deadline = DateTime.UtcNow + ReplyTimeout;
-        var replyFile = paths.ReplyFile(id);
-        while (!File.Exists(replyFile))
+        try
         {
-            if (DateTime.UtcNow > deadline) throw new GuestUnavailableException();
+            await WaitUntilReplyExistsAsync(id, cancel);
+        }
+        catch
+        {
+            // A request nobody is waiting for must never run later, e.g. a click replayed minutes after a timeout.
+            TryDelete(paths.RequestFile(id));
+            throw;
+        }
+        return ReadAndDeleteReply(id);
+    }
+
+    private async Task WaitUntilReplyExistsAsync(string id, CancellationToken cancel)
+    {
+        var started = DateTime.UtcNow;
+        var lastLivenessCheck = started;
+        while (!File.Exists(paths.ReplyFile(id)))
+        {
+            var now = DateTime.UtcNow;
+            if (now - started > ReplyTimeout) throw new GuestUnavailableException();
+            if (now - lastLivenessCheck > LivenessCheckInterval)
+            {
+                if (!IsGuestAlive()) throw new GuestUnavailableException();
+                lastLivenessCheck = now;
+            }
             await Task.Delay(PollInterval, cancel);
         }
-        var line = await File.ReadAllTextAsync(replyFile, cancel);
-        File.Delete(replyFile);
+    }
+
+    private Reply ReadAndDeleteReply(string id)
+    {
+        var replyFile = paths.ReplyFile(id);
+        var line = ControlPaths.ReadShared(replyFile);
+        TryDelete(replyFile);
         return Reply.Decode(line);
+    }
+
+    private static void TryDelete(string path)
+    {
+        try
+        {
+            File.Delete(path);
+        }
+        catch (Exception error) when (error is IOException or UnauthorizedAccessException)
+        {
+            // Leftovers are harmless: the guest drops stale requests and `winbox start` clears the folder.
+        }
     }
 }
