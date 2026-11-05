@@ -1,0 +1,50 @@
+﻿<Project Sdk="Microsoft.NET.Sdk">
+
+  <PropertyGroup>
+    <OutputType>Exe</OutputType>
+    <TargetFramework>net10.0-windows</TargetFramework>
+    <AssemblyName>winbox</AssemblyName>
+    <RootNamespace>Winbox.Cli</RootNamespace>
+    <Version>0.1.0</Version>
+    <ImplicitUsings>enable</ImplicitUsings>
+    <Nullable>enable</Nullable>
+  </PropertyGroup>
+
+  <ItemGroup>
+    <ProjectReference Include="..\Winbox.Core\Winbox.Core.csproj" />
+    <!-- Built so it can be bundled next to winbox.exe, but never linked: it runs inside the sandbox.
+         Skipping framework negotiation lets this net10 project depend on a net48 one without NU1702. -->
+    <ProjectReference Include="..\Winbox.Guest\Winbox.Guest.csproj" ReferenceOutputAssembly="false"
+                      SkipGetTargetFrameworkProperties="true"
+                      GlobalPropertiesToRemove="SelfContained;PublishSingleFile">
+      <!-- The guest stays AnyCPU whatever runtime winbox is published for. Clearing the RID only when one is
+           set keeps a plain build from building the guest a second time with different properties. -->
+      <AdditionalProperties Condition="'$(RuntimeIdentifier)' != ''">RuntimeIdentifier=</AdditionalProperties>
+    </ProjectReference>
+  </ItemGroup>
+
+  <ItemGroup>
+    <PackageReference Include="Microsoft.Extensions.Hosting" Version="10.0.14" />
+    <PackageReference Include="ModelContextProtocol" Version="2.3.1" />
+  </ItemGroup>
+
+  <PropertyGroup>
+    <GuestBuildDir>..\Winbox.Guest\bin\$(Configuration)\net48\</GuestBuildDir>
+  </PropertyGroup>
+
+  <Target Name="CollectGuestFiles">
+    <ItemGroup>
+      <GuestFile Include="$(GuestBuildDir)*.exe;$(GuestBuildDir)*.dll;$(GuestBuildDir)*.config" />
+    </ItemGroup>
+    <Error Condition="'@(GuestFile)' == ''" Text="The guest helper build is missing from $(GuestBuildDir)." />
+  </Target>
+
+  <Target Name="CopyGuestToOutput" AfterTargets="Build" DependsOnTargets="CollectGuestFiles">
+    <Copy SourceFiles="@(GuestFile)" DestinationFolder="$(OutDir)guest" SkipUnchangedFiles="true" />
+  </Target>
+
+  <Target Name="CopyGuestToPublish" AfterTargets="Publish" DependsOnTargets="CollectGuestFiles">
+    <Copy SourceFiles="@(GuestFile)" DestinationFolder="$(PublishDir)guest" SkipUnchangedFiles="true" />
+  </Target>
+
+</Project>
