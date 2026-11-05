@@ -14,7 +14,7 @@ public sealed class ControlPaths(string root)
     public string StatusFile => Path.Combine(Root, "guest.status");
     public string LogFile => Path.Combine(Root, "guest.log");
 
-    public string RequestFile(string id) => Path.Combine(RequestsDir, id + ".cmd");
+    public string RequestFile(string id) => Path.Combine(RequestsDir, id + ".req");
     public string ReplyFile(string id) => Path.Combine(RepliesDir, id + ".reply");
     public string ImageFile(string id) => Path.Combine(RepliesDir, id + ".png");
 

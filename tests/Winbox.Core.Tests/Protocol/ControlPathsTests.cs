@@ -13,7 +13,7 @@ public sealed class ControlPathsTests : IDisposable
     {
         var paths = new ControlPaths(@"C:\control");
 
-        Assert.Equal(@"C:\control\requests\abc.cmd", paths.RequestFile("abc"));
+        Assert.Equal(@"C:\control\requests\abc.req", paths.RequestFile("abc"));
         Assert.Equal(@"C:\control\replies\abc.reply", paths.ReplyFile("abc"));
         Assert.Equal(@"C:\control\replies\abc.png", paths.ImageFile("abc"));
         Assert.Equal(@"C:\control\guest.status", paths.StatusFile);

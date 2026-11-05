@@ -53,7 +53,7 @@ internal sealed class GuestServer(ControlPaths paths, CommandExecutor executor, 
 
     private void HandlePendingRequests()
     {
-        var requests = Directory.GetFiles(paths.RequestsDir, "*.cmd").OrderBy(File.GetCreationTimeUtc).ToList();
+        var requests = Directory.GetFiles(paths.RequestsDir, "*.req").OrderBy(File.GetCreationTimeUtc).ToList();
         foreach (var file in requests) Survive(() => HandleRequest(file));
     }
 

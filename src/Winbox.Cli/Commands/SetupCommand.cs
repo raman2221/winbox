@@ -31,7 +31,7 @@ internal sealed class SetupCommand : ICliCommand
         Console.WriteLine($"Windows edition:    {(edition.Length > 0 ? edition : "unknown")}");
         if (SetupAdvice.IsHomeEdition(edition))
             throw new WinboxException(
-                "Windows Home isn't supported: Windows Sandbox needs Windows 11 Pro, Enterprise or Education.");
+                "Windows Home isn't supported: Windows Sandbox needs Windows 10 or 11 Pro, Enterprise or Education.");
     }
 
     private static void ReportTerminal()

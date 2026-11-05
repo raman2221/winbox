@@ -11,7 +11,7 @@ namespace Winbox.Guest;
 internal sealed class InputInjector(ScreenCapture screen, HumanPacing pacing, IActivityFeedback feedback)
 {
     private const int WheelDelta = 120;
-    private const ushort EnterKey = 0x0D;
+    private const ushort EnterKey = 0x0D, TabKey = 0x09;
     private const int PauseBeforeClickMs = 70, PauseBetweenClicksMs = 90;
 
     public void MoveTo(Point target)
@@ -54,10 +54,17 @@ internal sealed class InputInjector(ScreenCapture screen, HumanPacing pacing, IA
     {
         foreach (var ch in text.Replace("\r\n", "\n"))
         {
-            if (ch == '\n') PressKeys(new[] { EnterKey });
-            else Native.Send(Native.UnicodeKey(ch, keyUp: false), Native.UnicodeKey(ch, keyUp: true));
+            TypeCharacter(ch);
             Thread.Sleep(pacing.Rhythm.DelayAfter(ch));
         }
+    }
+
+    /// <summary>Enter and Tab go out as real keys: as Unicode packets they don't submit forms or move focus.</summary>
+    private void TypeCharacter(char ch)
+    {
+        if (ch == '\n') PressKeys(new[] { EnterKey });
+        else if (ch == '\t') PressKeys(new[] { TabKey });
+        else Native.Send(Native.UnicodeKey(ch, keyUp: false), Native.UnicodeKey(ch, keyUp: true));
     }
 
     public void PressKeys(IReadOnlyList<ushort> keys)
@@ -70,9 +77,18 @@ internal sealed class InputInjector(ScreenCapture screen, HumanPacing pacing, IA
     private void JumpTo(Point point)
     {
         var size = screen.Size;
-        // Absolute coordinates are normalized to 0..65535 across the primary screen.
-        var dx = point.X * 65535 / System.Math.Max(1, size.Width - 1);
-        var dy = point.Y * 65535 / System.Math.Max(1, size.Height - 1);
+        var dx = Normalize(point.X, size.Width);
+        var dy = Normalize(point.Y, size.Height);
         Native.Send(Native.Mouse(Native.MouseMove | Native.MouseAbsolute, dx, dy, 0));
+    }
+
+    /// <summary>
+    /// Maps a pixel to SendInput's 0..65535 absolute range. Rounding up keeps Windows' truncating reverse mapping
+    /// on the intended pixel, and long math avoids overflow on very wide screens.
+    /// </summary>
+    private static int Normalize(int pixel, int extent)
+    {
+        var clamped = System.Math.Max(0, System.Math.Min(pixel, extent - 1));
+        return (int)(((long)clamped * 65536 + extent - 1) / System.Math.Max(1, extent));
     }
 }

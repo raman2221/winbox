@@ -1,5 +1,6 @@
 using System.Drawing;
 using System.Drawing.Imaging;
+using System.IO;
 using System.Windows.Forms;
 
 namespace Winbox.Guest;
@@ -10,6 +11,9 @@ internal sealed class ScreenCapture
 
     private static Rectangle Bounds => Screen.PrimaryScreen.Bounds;
 
+    /// <summary>
+    /// Encodes in memory and writes once: GDI+ saves in many small writes, each a round trip over the mapped share.
+    /// </summary>
     public Size SaveAsPng(string path)
     {
         var bounds = Bounds;
@@ -18,7 +22,9 @@ internal sealed class ScreenCapture
         {
             graphics.CopyFromScreen(bounds.Location, Point.Empty, bounds.Size);
         }
-        bitmap.Save(path, ImageFormat.Png);
+        using var png = new MemoryStream();
+        bitmap.Save(png, ImageFormat.Png);
+        File.WriteAllBytes(path, png.ToArray());
         return bounds.Size;
     }
 }

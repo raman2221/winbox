@@ -14,7 +14,7 @@ $zipPath = Join-Path $distDir $zipName
 function Invoke-Publish {
     if (Test-Path $publishDir) { Remove-Item -Path $publishDir -Recurse -Force }
     $project = Join-Path $repoRoot 'src\Winbox.Cli'
-    dotnet publish $project -c Release -r win-x64 --self-contained -p:PublishSingleFile=true -o $publishDir
+    dotnet publish $project -c Release -r win-x64 --self-contained -p:PublishSingleFile=true -p:EnableCompressionInSingleFile=true -p:DebugType=none -o $publishDir
     if ($LASTEXITCODE -ne 0) { throw "dotnet publish failed with exit code $LASTEXITCODE" }
 }
 

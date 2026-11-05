@@ -28,7 +28,7 @@ internal sealed class FakeGuest(ControlPaths paths)
         var deadline = DateTime.UtcNow + RequestTimeout;
         while (DateTime.UtcNow < deadline)
         {
-            var request = Directory.GetFiles(paths.RequestsDir).FirstOrDefault(file => file.EndsWith(".cmd"));
+            var request = Directory.GetFiles(paths.RequestsDir).FirstOrDefault(file => file.EndsWith(".req"));
             if (request is not null) return request;
             await Task.Delay(5);
         }
