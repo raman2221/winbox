@@ -10,8 +10,24 @@ public sealed class GuestClient(ControlPaths paths)
     private static readonly TimeSpan ReplyTimeout = TimeSpan.FromSeconds(15);
     private static readonly TimeSpan PollInterval = TimeSpan.FromMilliseconds(5);
     private static readonly TimeSpan LivenessCheckInterval = TimeSpan.FromMilliseconds(500);
+    private static readonly TimeSpan StatusRetryDelay = TimeSpan.FromMilliseconds(5);
+    private const int StatusReadAttempts = 3;
 
+    /// <summary>
+    /// Retries briefly because the guest's replace of the status file leaves a sub-millisecond gap; reading once
+    /// wrongly reported a live guest as dead about once per thousand checks.
+    /// </summary>
     public GuestStatus? ReadStatus()
+    {
+        for (var attempt = 1; attempt <= StatusReadAttempts; attempt++)
+        {
+            if (TryReadStatusOnce() is { } status) return status;
+            if (attempt < StatusReadAttempts) Thread.Sleep(StatusRetryDelay);
+        }
+        return null;
+    }
+
+    private GuestStatus? TryReadStatusOnce()
     {
         try
         {

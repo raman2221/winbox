@@ -25,8 +25,9 @@ public sealed class ControlPaths(string root)
     }
 
     /// <summary>
-    /// Writes via a temp file and a single replace, so a reader never sees a half-written file and there is
-    /// no moment where the file is missing (delete-then-move failed whenever a reader held the file open).
+    /// Writes via a temp file and a single replace, so a reader never sees a half-written file. The replace can
+    /// still leave the path missing for a moment, so readers retry (delete-then-move also crashed the writer
+    /// whenever a reader held the file open).
     /// </summary>
     public static void WriteAtomically(string path, string contents)
     {

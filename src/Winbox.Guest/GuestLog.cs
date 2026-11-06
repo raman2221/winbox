@@ -11,18 +11,46 @@ internal sealed class GuestLog(string path)
 {
     private const long MaxBytes = 1_000_000;
 
+    // A file locked for minutes fails ~90 times a second; one line per minute says the same thing.
+    private static readonly TimeSpan RepeatWindow = TimeSpan.FromMinutes(1);
+
+    private readonly object _gate = new();
+    private string _lastMessage = "";
+    private DateTime _lastWrittenAt = DateTime.MinValue;
+
     public void Write(Exception error)
+    {
+        var message = $"{error.GetType().Name}: {error.Message}";
+        lock (_gate)
+        {
+            if (IsRepeat(message)) return;
+            _lastMessage = message;
+            _lastWrittenAt = DateTime.UtcNow;
+            TryAppend(message);
+        }
+    }
+
+    private bool IsRepeat(string message) =>
+        message == _lastMessage && DateTime.UtcNow - _lastWrittenAt < RepeatWindow;
+
+    private void TryAppend(string message)
     {
         try
         {
-            if (File.Exists(path) && new FileInfo(path).Length > MaxBytes) return;
-            File.AppendAllText(path, $"{DateTime.UtcNow:O} {error.GetType().Name}: {error.Message}{Environment.NewLine}");
+            RotateIfFull();
+            File.AppendAllText(path, $"{DateTime.UtcNow:O} {message}{Environment.NewLine}");
         }
-        catch (IOException)
+        catch (Exception error) when (error is IOException or UnauthorizedAccessException)
         {
         }
-        catch (UnauthorizedAccessException)
-        {
-        }
+    }
+
+    /// <summary>Keeps the newest entries by moving a full log aside, rather than going silent.</summary>
+    private void RotateIfFull()
+    {
+        if (!File.Exists(path) || new FileInfo(path).Length < MaxBytes) return;
+        var previous = path + ".1";
+        if (File.Exists(previous)) File.Delete(previous);
+        File.Move(path, previous);
     }
 }

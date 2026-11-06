@@ -19,13 +19,14 @@ try
     await commands.RunAsync(args, cancellation.Token);
     return 0;
 }
-catch (WinboxException error)
-{
-    Console.Error.WriteLine($"winbox: {error.Message}");
-    return 1;
-}
 catch (OperationCanceledException) when (cancellation.IsCancellationRequested)
 {
     Console.Error.WriteLine("winbox: cancelled");
     return 130;
+}
+catch (Exception error)
+{
+    // A one-line reason helps more than a stack trace, whichever layer the failure came from.
+    Console.Error.WriteLine($"winbox: {error.Message}");
+    return 1;
 }

@@ -1,5 +1,4 @@
 using System.Drawing;
-using System.Drawing.Imaging;
 using Winbox.Core.Rendering;
 
 namespace Winbox.Core.Tests.Rendering;
@@ -57,7 +56,7 @@ public class FrameDecoderTests
     [Fact]
     public void DecodeToFit_LargePng_ReturnsFrameOfFittedSize()
     {
-        var png = SolidPng(400, 200, Color.Black);
+        var png = TestPng.Solid(400, 200, Color.Black);
 
         var frame = FrameDecoder.DecodeToFit(png, new Size(100, 100));
 
@@ -68,19 +67,10 @@ public class FrameDecoderTests
     [Fact]
     public void DecodeToFit_ColoredPng_StoresPixelsAsRgb()
     {
-        var png = SolidPng(40, 20, Color.FromArgb(200, 100, 50));
+        var png = TestPng.Solid(40, 20, Color.FromArgb(200, 100, 50));
 
         var frame = FrameDecoder.DecodeToFit(png, new Size(20, 20));
 
         Assert.Equal(((byte)200, (byte)100, (byte)50), frame.PixelAt(10, 5));
-    }
-
-    private static byte[] SolidPng(int width, int height, Color color)
-    {
-        using var bitmap = new Bitmap(width, height);
-        using (var graphics = Graphics.FromImage(bitmap)) graphics.Clear(color);
-        using var stream = new MemoryStream();
-        bitmap.Save(stream, ImageFormat.Png);
-        return stream.ToArray();
     }
 }

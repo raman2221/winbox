@@ -11,7 +11,8 @@ internal static class CommandCatalog
 {
     public static CommandSet Create(GuestClient guest, SandboxLauncher launcher)
     {
-        var actions = new DesktopActions(new ActionSender(guest));
+        var sender = new ActionSender(guest);
+        var actions = new DesktopActions(sender, new GuestPixels());
         var commands = new CommandSet();
         commands.Register(new HelpCommand(commands));
         commands.Register(new SetupCommand());
@@ -21,7 +22,7 @@ internal static class CommandCatalog
         commands.Register(new ViewCommand(guest));
         commands.Register(new SaveScreenshotCommand(guest));
         foreach (var input in InputCommands(actions)) commands.Register(input);
-        commands.Register(new McpCommand(guest, launcher, actions));
+        commands.Register(new McpCommand(guest, launcher, sender));
         commands.Register(new McpConfigCommand());
         return commands;
     }

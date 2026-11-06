@@ -9,11 +9,14 @@ namespace Winbox.Cli.Mcp;
 
 /// <summary>The MCP tools an agent uses to see and drive its winbox desktop.</summary>
 [McpServerToolType]
-internal sealed class WinboxTools(GuestClient guest, SandboxLauncher launcher, DesktopActions actions)
+internal sealed class WinboxTools(GuestClient guest, SandboxLauncher launcher, DesktopActions actions, AgentView view)
 {
     private const string Animated =
         " The pointer moves along a smooth, human-paced path, so a person watching can follow along;"
         + " expect it to take a few hundred milliseconds.";
+
+    private const string XHelp = "x in pixels of the latest screenshot, from its left edge.";
+    private const string YHelp = "y in pixels of the latest screenshot, from its top edge.";
 
     private const string IntentHelp =
         "Optional short phrase shown on screen to people watching, e.g. 'Opening the Start menu'."
@@ -24,16 +27,17 @@ internal sealed class WinboxTools(GuestClient guest, SandboxLauncher launcher, D
         + " All other tools take coordinates in the pixels of this image, measured from the top-left corner.")]
     public async Task<IEnumerable<ContentBlock>> Screenshot(CancellationToken cancel)
     {
-        var shot = await guest.ScreenshotAsync(cancel);
-        var caption = $"Screen is {shot.Width}x{shot.Height} pixels; coordinates are screen pixels from the top-left.";
+        var shot = await view.CaptureAsync(cancel);
+        var caption =
+            $"Screen is {shot.Width}x{shot.Height} pixels; coordinates are pixels of this image from the top-left.";
         return [ImageContentBlock.FromBytes(shot.Png, "image/png"), new TextContentBlock { Text = caption }];
     }
 
     [McpServerTool(Name = "click")]
     [Description("Move the mouse to (x, y) on the winbox desktop and click." + Animated)]
     public Task<string> Click(
-        [Description("Screen x in pixels from the left edge.")] int x,
-        [Description("Screen y in pixels from the top edge.")] int y,
+        [Description(XHelp)] int x,
+        [Description(YHelp)] int y,
         [Description("Mouse button: left, right or middle.")] string button = "left",
         [Description("Number of clicks: 1 for a single click, 2 for a double-click, 3 for a triple-click.")]
         int clicks = 1,
@@ -44,8 +48,8 @@ internal sealed class WinboxTools(GuestClient guest, SandboxLauncher launcher, D
     [McpServerTool(Name = "move_mouse")]
     [Description("Move the mouse to (x, y) without clicking, e.g. to reveal a tooltip or hover menu." + Animated)]
     public Task<string> MoveMouse(
-        [Description("Screen x in pixels from the left edge.")] int x,
-        [Description("Screen y in pixels from the top edge.")] int y,
+        [Description(XHelp)] int x,
+        [Description(YHelp)] int y,
         [Description(IntentHelp)] string? intent = null,
         CancellationToken cancel = default) =>
         actions.PerformAsync(new MoveCommand(new Point(x, y)), intent, cancel);
@@ -65,8 +69,8 @@ internal sealed class WinboxTools(GuestClient guest, SandboxLauncher launcher, D
     [McpServerTool(Name = "scroll")]
     [Description("Move the mouse to (x, y) and turn the scroll wheel there." + Animated)]
     public Task<string> Scroll(
-        [Description("Screen x in pixels from the left edge.")] int x,
-        [Description("Screen y in pixels from the top edge.")] int y,
+        [Description(XHelp)] int x,
+        [Description(YHelp)] int y,
         [Description("Wheel notches: positive scrolls up, negative scrolls down. 3 is about one screenful of text.")]
         int notches,
         [Description(IntentHelp)] string? intent = null,

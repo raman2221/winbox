@@ -40,9 +40,16 @@ internal sealed class CommandExecutor(ScreenCapture screen, InputInjector input,
             case TypeTextCommand t: input.TypeText(t.Text); break;
             case PressKeyCommand k: input.PressKeys(KeyCombo.Parse(k.Combo)); break;
             case RunCommand r: StartProcess(r.CommandLine); break;
-            case ShutdownCommand: Process.Start("shutdown", "/s /t 0"); break;
+            case ShutdownCommand: ShutDown(); break;
         }
         return Reply.Success();
+    }
+
+    private static void ShutDown()
+    {
+        // /f closes apps that would otherwise hold shutdown up over unsaved work; the 1 s delay lets this reply
+        // reach the host first.
+        Process.Start("shutdown", "/s /f /t 1")?.Dispose();
     }
 
     private Reply TakeScreenshot(string imagePath)
@@ -53,12 +60,9 @@ internal sealed class CommandExecutor(ScreenCapture screen, InputInjector input,
 
     private static void StartProcess(string commandLine)
     {
-        // cmd /c start resolves app names the same way the Run dialog does.
-        var info = new ProcessStartInfo("cmd.exe", "/c start \"\" " + commandLine)
-        {
-            UseShellExecute = false,
-            CreateNoWindow = true,
-        };
-        Process.Start(info);
+        // The shell resolves app names like the Run dialog does, without cmd reading &, | or % in the arguments.
+        // A program it can't find throws, which becomes an error reply.
+        var (program, arguments) = ProgramLine.Split(commandLine);
+        Process.Start(new ProcessStartInfo(program, arguments) { UseShellExecute = true })?.Dispose();
     }
 }
