@@ -23,12 +23,20 @@ internal sealed class GuestServer(ControlPaths paths, CommandExecutor executor, 
     {
         paths.EnsureCreated();
         StartHeartbeat();
+        using var watcher = WatchRequests();
         while (true)
         {
             Survive(HandlePendingRequests);
             Thread.Sleep(PollInterval);
         }
     }
+
+    /// <summary>
+    /// Keeps a change notification open on the requests folder. Over Windows Sandbox's mapped-folder share the
+    /// directory listing is otherwise cached, and new requests stayed invisible for up to ~20 s. An open watcher
+    /// keeps that cache current (measured in a real sandbox: ~20 s down to 10-30 ms). Polling still does the work.
+    /// </summary>
+    private FileSystemWatcher WatchRequests() => new(paths.RequestsDir) { EnableRaisingEvents = true };
 
     /// <summary>Beats on its own thread so a long, human-paced action never makes the guest look dead.</summary>
     private void StartHeartbeat()
