@@ -18,6 +18,9 @@ dotnet build winbox.slnx -c Release
 dotnet test winbox.slnx -c Release
 ```
 
+`dotnet test winbox.slnx` runs both test projects: the host tests (net10.0-windows) and the guest helper tests
+(net48).
+
 To produce the same self-contained zip the release workflow builds:
 
 ```powershell
@@ -26,7 +29,8 @@ To produce the same self-contained zip the release workflow builds:
 ```
 
 To try a change end to end you need Windows Sandbox enabled (see the README). Run `winbox start` from your build
-output, then `winbox status` and `winbox screenshot shot.png` to check the guest helper responds.
+output, then `winbox status` and `winbox screenshot shot.png` to check the guest helper responds. If something goes
+wrong inside the sandbox, the helper logs errors to `%LOCALAPPDATA%\winbox\control\guest.log` on the host.
 
 ## Project layout
 
@@ -34,7 +38,8 @@ output, then `winbox status` and `winbox screenshot shot.png` to check the guest
 - `src/Winbox.Guest`: the helper that runs inside the sandbox (net48).
 - `src/Winbox.Core`: host-side logic: sandbox config, launching, guest client, Sixel rendering (net10.0-windows).
 - `src/Winbox.Cli`: `winbox.exe`, the CLI and MCP server (net10.0-windows).
-- `tests/Winbox.Core.Tests`: xunit tests.
+- `tests/Winbox.Core.Tests`: xunit tests for the host side (net10.0-windows).
+- `tests/Winbox.Guest.Tests`: xunit tests for the guest helper, on the runtime it ships on (net48).
 
 ## Code style
 

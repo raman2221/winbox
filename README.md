@@ -24,13 +24,17 @@ human at the keyboard, while your own mouse, keyboard and clipboard stay yours.
 Most automation teleports the mouse and pastes text in an instant, which is impossible to follow. winbox makes the
 agent's work watchable:
 
+- **The agent tells you what it's doing, in its own words.** Every input tool takes an optional `intent`, a short
+  phrase such as "Opening the Start menu" or "Searching for flights". A caption pill at the bottom of the sandbox
+  screen shows it for the whole action, so you follow the agent's *plan*, not just its clicks. Without an intent
+  the pill falls back to a plain description: "Clicking", "Typing “hello”", "Pressing ctrl+l", "Opening notepad".
+  From the CLI, add `--why "<text>"` to any input command.
 - **A cursor that moves like a hand.** The pointer glides along an eased, slightly curved path instead of jumping.
   Short hops take about 180 ms and long sweeps up to about 650 ms.
 - **Typing you can read.** Text goes in one key at a time, with 25 to 75 ms between keys and a small extra pause at
   each space.
-- **An overlay that shows intent.** While the agent is active, a violet halo follows its cursor, a ripple marks
-  every click, and a caption pill at the bottom of the screen says what's happening: "Clicking",
-  "Typing “hello”", "Pressing ctrl+l", "Opening notepad".
+- **An overlay that shows where it's working.** While the agent is active, a violet halo follows its cursor and a
+  ripple marks every click.
 - **Clean screenshots for the agent.** The overlay windows are marked with
   `SetWindowDisplayAffinity(WDA_EXCLUDEFROMCAPTURE)`, so people watching see them but the agent's screenshots don't
   include them. They're also click-through, so they never get in the way of input.
@@ -109,7 +113,7 @@ winbox start                         # boot the sandbox; its window opens on you
 winbox status                        # is the guest helper alive?
 winbox view                          # optional: watch and drive it from Windows Terminal instead
 winbox screenshot shot.png           # grab the sandbox screen
-winbox run notepad                   # launch a program inside the sandbox
+winbox run notepad --why "Opening Notepad"   # launch a program; the caption says why
 winbox type "hello from the host"
 winbox stop                          # close the sandbox (and wipe it)
 ```
@@ -173,19 +177,32 @@ instructions.
 
 | Tool | What it does |
 | --- | --- |
-| `screenshot` | Capture the sandbox screen. |
-| `click(x, y, button="left", clicks=1)` | Click at a point. `button` is `left`, `right` or `middle`; `clicks` is 1 to 3; `clicks=2` double-clicks. |
-| `move_mouse(x, y)` | Move the pointer. |
-| `drag(fromX, fromY, toX, toY)` | Press, move and release. |
-| `scroll(x, y, notches)` | Scroll the wheel at a point. Positive is up, negative is down. |
-| `type_text(text)` | Type text into the focused window. |
-| `press_key(combo)` | Press a key or chord, such as `enter`, `ctrl+l`, `alt+f4`, `win+r`. |
-| `run_program(command)` | Launch a program or command inside the sandbox. |
-| `status` | Report whether the sandbox and guest helper are running. |
+| `screenshot` | Capture the sandbox screen, sized for the model (see below). |
+| `click(x, y, button="left", clicks=1, intent)` | Click at a point. `button` is `left`, `right` or `middle`; `clicks` is 1 to 3; `clicks=2` double-clicks. |
+| `move_mouse(x, y, intent)` | Move the pointer, e.g. to reveal a tooltip. |
+| `drag(fromX, fromY, toX, toY, intent)` | Press the left button, move and release. |
+| `scroll(x, y, notches, intent)` | Scroll the wheel at a point. Positive is up, negative is down. |
+| `type_text(text, intent)` | Type text into the focused window, one key at a time. Newlines press Enter. |
+| `press_key(combo, intent)` | Press a key or chord, such as `enter`, `ctrl+l`, `alt+f4`, `win+r`. |
+| `run_program(command, intent)` | Launch a program the way the Win+R Run dialog would. See the notes below. |
+| `status` | Report whether the sandbox and guest helper are running, and the guest's real screen size. |
 | `start_sandbox(memoryMb=4096, offline=false)` | Start Windows Sandbox with the guest helper. |
 | `stop_sandbox` | Close the sandbox. Everything inside is wiped. |
 
-Coordinates are screen pixels measured from the top-left corner of the latest screenshot.
+Notes:
+
+- **`intent` is optional on every input tool.** It's a short phrase shown to people watching; under about six
+  words reads best. winbox flattens it to one line and cuts it off at 60 characters.
+- **Screenshots are sized for the model.** The MCP `screenshot` shrinks the image to at most 1568 px on the long
+  edge and about 1.15 megapixels, the size Claude would otherwise downscale it to. Input coordinates are pixels of
+  the latest screenshot, measured from its top-left corner, and winbox maps them back to guest pixels for you.
+  `status` reports the guest's real resolution, which can be larger than the screenshot. The CLI `screenshot`
+  command always saves the full-size image.
+- **`run_program` doesn't go through `cmd`.** winbox splits the line into a program and its arguments (a quoted
+  program path such as `"C:\My Tools\app.exe" --flag` works) and starts it with ShellExecute, so app names
+  resolve the way they do in the Run dialog. `&`, `|` and `%` reach the program literally, which keeps URLs
+  intact. For shell features, ask for a shell: `cmd /c dir > out.txt`. A program that can't be found comes back
+  as an error.
 
 ## CLI reference
 
@@ -194,19 +211,23 @@ Coordinates are screen pixels measured from the top-left corner of the latest sc
 | `winbox help` | List every command. Running `winbox` with no arguments does the same. |
 | `winbox setup` | Check that this PC can run Windows Sandbox and explain how to enable it. |
 | `winbox start [--memory <MB>] [--offline]` | Write the sandbox config and launch Windows Sandbox. `--offline` disables networking. |
-| `winbox stop` | Close the sandbox. |
+| `winbox stop` | Shut the sandbox down from inside (`shutdown /s /f /t 1`). Open apps close without saving and everything is wiped. |
 | `winbox status` | Show whether the sandbox and guest helper are running. |
 | `winbox view` | Stream the sandbox screen into Windows Terminal. Clicks and typing pass through. |
-| `winbox screenshot <out.png>` | Save a screenshot of the sandbox. |
+| `winbox screenshot <out.png>` | Save a full-resolution screenshot of the sandbox. |
 | `winbox click <x> <y> [left\|right\|middle] [--double]` | Click at a point. |
 | `winbox move <x> <y>` | Move the pointer. |
 | `winbox drag <x1> <y1> <x2> <y2>` | Drag from one point to another. |
 | `winbox scroll <x> <y> <notches>` | Scroll at a point (positive is up). |
 | `winbox type <text...>` | Type text. The remaining arguments are joined with spaces. |
 | `winbox key <combo>` | Press a key combo, such as `ctrl+shift+esc`. |
-| `winbox run <command line...>` | Launch a program inside the sandbox, e.g. `winbox run notepad`. |
+| `winbox run <command line...>` | Launch a program inside the sandbox, e.g. `winbox run notepad`. Like `run_program`, no `cmd` is involved. |
 | `winbox mcp` | Run the MCP server on stdio. |
 | `winbox mcp-config` | Print the `claude mcp add` command for this install. |
+
+Every input command (`click`, `move`, `drag`, `scroll`, `type`, `key`, `run`) also takes `--why <text>`, the CLI
+version of the MCP `intent`, for example `winbox click 640 400 --why "Opening the Start menu"`. CLI coordinates are
+guest pixels, the same as in a `winbox screenshot`.
 
 ## How it works
 
@@ -225,17 +246,21 @@ Coordinates are screen pixels measured from the top-left corner of the latest sc
  |      requests\    host -> guest |          |                                 |
  |      replies\     guest -> host |          |                                 |
  |      guest.status heartbeat     |          |                                 |
+ |      guest.log    helper errors |          |                                 |
  +---------------------------------+          +---------------------------------+
 ```
 
 1. `winbox start` writes a `.wsb` config to `%LOCALAPPDATA%\winbox\`. It maps two host folders into the sandbox:
    `tools` (read-only, holds the guest helper `Winbox.Guest.exe`) at `C:\winbox\tools`, and `control` (read/write)
    at `C:\winbox\control`. Then it launches Windows Sandbox, whose LogonCommand starts the helper.
-2. To act, the host drops a one-line text command into `control\requests\`.
+2. To act, the host drops a one-line text command into `control\requests\` as a `.req` file. When the agent
+   gives an `intent`, a `say` request carrying that caption goes first, and the helper shows it for the action
+   that follows.
 3. The helper runs it: GDI screenshots, `SendInput` for mouse and keyboard, or launching a program. Mouse moves
    follow an eased path and typing is paced key by key, while a capture-excluded overlay draws the halo, click
    ripple and caption. It writes the reply, and any PNG, to `control\replies\`.
-4. The helper refreshes `control\guest.status` every second, so the host can tell it's alive.
+4. The helper refreshes `control\guest.status` every second, so the host can tell it's alive, and appends any
+   errors it hits to `control\guest.log`.
 
 winbox doesn't open any network connection between host and guest. The shared folders are its only channel.
 
@@ -247,7 +272,8 @@ winbox doesn't open any network connection between host and guest. The shared fo
 | `src/Winbox.Guest` | net48 | The helper that runs inside the sandbox. |
 | `src/Winbox.Core` | net10.0-windows | Sandbox config, launching, the guest client and the Sixel renderer. |
 | `src/Winbox.Cli` | net10.0-windows | `winbox.exe`: the CLI and MCP server. Ships the guest build in `guest\`. |
-| `tests/Winbox.Core.Tests` | xunit | Unit tests. |
+| `tests/Winbox.Core.Tests` | net10.0-windows, xunit | Host-side unit tests. |
+| `tests/Winbox.Guest.Tests` | net48, xunit | Guest helper tests, on the runtime the helper ships on. |
 
 ## Security
 
@@ -262,6 +288,19 @@ winbox doesn't open any network connection between host and guest. The shared fo
   screenshots and to software inside the guest.
 - The sandbox is wiped when it closes. Copy out anything you want to keep before running `winbox stop`.
 
+## Troubleshooting
+
+- **Start with `winbox status`.** It tells you whether Windows Sandbox is running, whether the helper inside it
+  responds, and the guest's screen size.
+- **Read the helper's log.** Errors inside the sandbox are appended to `%LOCALAPPDATA%\winbox\control\guest.log`
+  on the host. `winbox start` clears the control folder, so read it before you restart.
+- **`winbox stop` says the helper isn't responding.** Stopping works by asking the helper to shut Windows down, so
+  close the Windows Sandbox window yourself instead.
+- **`winbox start` says a sandbox is already running.** Windows Sandbox allows one instance at a time. Close the
+  open one first.
+- **`run_program` can't find a program, or `&&` doesn't work.** There's no shell in between. Give the full path,
+  or wrap the command in `cmd /c ...` when you need shell features.
+
 ## Limitations and roadmap
 
 v0.1 limitations:
@@ -269,7 +308,8 @@ v0.1 limitations:
 - One sandbox at a time, because Windows Sandbox only runs one instance.
 - No persistence. Every start is a fresh Windows.
 - `winbox view` needs a Sixel-capable terminal; Windows Terminal 1.22+ is the supported one.
-- The human-like motion, typing rhythm and overlay are untested in a real Sandbox so far. Timings may need tuning.
+- The human-like motion, typing rhythm, overlay and intent captions are untested in a real Sandbox so far.
+  Timings may need tuning.
 - Human pacing makes actions slower than raw automation; long text takes a few seconds to type.
 - Agents see pixels only. There are no accessibility-tree snapshots yet.
 - Not available on Windows Home.
