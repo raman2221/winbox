@@ -11,7 +11,7 @@ internal static class CommandCatalog
 {
     public static CommandSet Create(GuestClient guest, SandboxLauncher launcher)
     {
-        var actions = new DesktopActions(guest);
+        var actions = new DesktopActions(new ActionSender(guest));
         var commands = new CommandSet();
         commands.Register(new HelpCommand(commands));
         commands.Register(new SetupCommand());

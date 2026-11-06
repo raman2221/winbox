@@ -13,6 +13,7 @@
     <ProjectReference Include="..\Winbox.Protocol\Winbox.Protocol.csproj" />
     <Reference Include="System.Drawing" />
     <Reference Include="System.Windows.Forms" />
+    <InternalsVisibleTo Include="Winbox.Guest.Tests" />
   </ItemGroup>
 
 </Project>

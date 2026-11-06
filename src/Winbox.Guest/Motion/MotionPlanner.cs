@@ -20,7 +20,7 @@ internal sealed class MotionPlanner(Random random)
         var steps = (int)(DurationMs(distance) / FrameMs);
         var bow = distance * ArcFraction * (random.Next(2) == 0 ? -1 : 1);
         var path = new List<Point>(steps + 1);
-        for (var step = 1; step <= steps; step++)
+        for (var step = 1; step < steps; step++)
         {
             path.Add(PointAlong(from, to, (double)step / steps, bow));
         }

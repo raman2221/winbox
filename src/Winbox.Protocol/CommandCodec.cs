@@ -21,6 +21,7 @@ public static class CommandCodec
         // Spaces would split the line into extra arguments; "ctrl + c" means the same as "ctrl+c".
         PressKeyCommand k => $"key {k.Combo.Replace(" ", "")}",
         RunCommand r => $"run {ToBase64(r.CommandLine)}",
+        SayCommand s => $"say {ToBase64(s.Caption)}",
         ShutdownCommand => "shutdown",
         _ => throw new ProtocolException($"Unknown command type {command.GetType().Name}"),
     };
@@ -40,6 +41,7 @@ public static class CommandCodec
             "type" => new TypeTextCommand(FromBase64(args.TextAt(1))),
             "key" => new PressKeyCommand(args.TextAt(1)),
             "run" => new RunCommand(FromBase64(args.TextAt(1))),
+            "say" => new SayCommand(FromBase64(args.TextAt(1))),
             "shutdown" => new ShutdownCommand(),
             _ => throw new ProtocolException($"Unknown verb '{parts[0]}'"),
         };

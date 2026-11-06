@@ -8,8 +8,14 @@ namespace Winbox.Cli.Commands;
 internal sealed class InputCommand(CommandHelp help, Func<CommandArgs, Command> parse, DesktopActions actions)
     : ICliCommand
 {
-    public CommandHelp Help { get; } = help;
+    private const string WhyOption = "--why";
 
-    public async Task RunAsync(CommandArgs args, CancellationToken cancel) =>
-        Console.WriteLine(await actions.PerformAsync(parse(args), cancel));
+    public CommandHelp Help { get; } = help with { Usage = $"{help.Usage} [{WhyOption} <text>]" };
+
+    public async Task RunAsync(CommandArgs args, CancellationToken cancel)
+    {
+        // Taken before parsing, because the parsers reject any option they don't know.
+        var why = args.TakeOption(WhyOption);
+        Console.WriteLine(await actions.PerformAsync(parse(args), why, cancel));
+    }
 }

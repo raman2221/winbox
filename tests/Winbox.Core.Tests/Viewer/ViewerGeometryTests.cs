@@ -42,7 +42,7 @@ public class ViewerGeometryTests
     [Fact]
     public void StatusLine_WideWindow_ShowsFullText()
     {
-        var status = ViewerGeometry.StatusLine(new Size(1920, 1080), 120);
+        var status = ViewerGeometry.StatusLine(new Size(1920, 1080), null, 120);
 
         Assert.Equal("winbox · 1920x1080 · Ctrl+Q quit · click/type to control", status);
     }
@@ -50,8 +50,24 @@ public class ViewerGeometryTests
     [Fact]
     public void StatusLine_NarrowWindow_LeavesLastColumnEmpty()
     {
-        var status = ViewerGeometry.StatusLine(new Size(1920, 1080), 20);
+        var status = ViewerGeometry.StatusLine(new Size(1920, 1080), null, 20);
 
         Assert.Equal("winbox · 1920x1080 ", status);
+    }
+
+    [Fact]
+    public void StatusLine_WithNotice_ReplacesControlHintButKeepsQuitHint()
+    {
+        var status = ViewerGeometry.StatusLine(new Size(1920, 1080), "guest not responding, retrying", 120);
+
+        Assert.Equal("winbox · 1920x1080 · Ctrl+Q quit · guest not responding, retrying", status);
+    }
+
+    [Fact]
+    public void StatusLine_NoticeWithControlCharacters_PrintsThemAsSpaces()
+    {
+        var status = ViewerGeometry.StatusLine(new Size(800, 600), "bad\u001b[2Jthing\r\n", 120);
+
+        Assert.Equal("winbox · 800x600 · Ctrl+Q quit · bad [2Jthing  ", status);
     }
 }

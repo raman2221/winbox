@@ -7,5 +7,6 @@
   </Folder>
   <Folder Name="/tests/">
     <Project Path="tests/Winbox.Core.Tests/Winbox.Core.Tests.csproj" />
+    <Project Path="tests/Winbox.Guest.Tests/Winbox.Guest.Tests.csproj" />
   </Folder>
 </Solution>

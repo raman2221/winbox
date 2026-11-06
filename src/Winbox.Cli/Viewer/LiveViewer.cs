@@ -2,7 +2,7 @@ namespace Winbox.Cli.Viewer;
 
 /// <summary>
 /// Runs rendering, input and command sending side by side. When any of them stops (Ctrl+Q,
-/// cancellation or a guest error) the others are cancelled, and a real error is rethrown.
+/// cancellation or the guest staying unreachable) the others are cancelled, and a real error is rethrown.
 /// </summary>
 internal sealed class LiveViewer(FrameRenderer renderer, InputDispatcher input, CommandQueue commands)
 {

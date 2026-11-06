@@ -15,6 +15,10 @@ internal sealed class WinboxTools(GuestClient guest, SandboxLauncher launcher, D
         " The pointer moves along a smooth, human-paced path, so a person watching can follow along;"
         + " expect it to take a few hundred milliseconds.";
 
+    private const string IntentHelp =
+        "Optional short phrase shown on screen to people watching, e.g. 'Opening the Start menu'."
+        + " Keep it under ~6 words.";
+
     [McpServerTool(Name = "screenshot", ReadOnly = true)]
     [Description("Capture the winbox desktop as a PNG. Call this first and after every action to see what changed."
         + " All other tools take coordinates in the pixels of this image, measured from the top-left corner.")]
@@ -33,22 +37,30 @@ internal sealed class WinboxTools(GuestClient guest, SandboxLauncher launcher, D
         [Description("Mouse button: left, right or middle.")] string button = "left",
         [Description("Number of clicks: 1 for a single click, 2 for a double-click, 3 for a triple-click.")]
         int clicks = 1,
+        [Description(IntentHelp)] string? intent = null,
         CancellationToken cancel = default) =>
-        actions.PerformAsync(DesktopRequests.Click(new Point(x, y), button, clicks), cancel);
+        actions.PerformAsync(DesktopRequests.Click(new Point(x, y), button, clicks), intent, cancel);
 
     [McpServerTool(Name = "move_mouse")]
     [Description("Move the mouse to (x, y) without clicking, e.g. to reveal a tooltip or hover menu." + Animated)]
     public Task<string> MoveMouse(
         [Description("Screen x in pixels from the left edge.")] int x,
         [Description("Screen y in pixels from the top edge.")] int y,
+        [Description(IntentHelp)] string? intent = null,
         CancellationToken cancel = default) =>
-        actions.PerformAsync(new MoveCommand(new Point(x, y)), cancel);
+        actions.PerformAsync(new MoveCommand(new Point(x, y)), intent, cancel);
 
     [McpServerTool(Name = "drag")]
     [Description("Press the left button at (fromX, fromY), drag to (toX, toY) and release."
         + " Use it to move windows, select text or drop files." + Animated)]
-    public Task<string> Drag(int fromX, int fromY, int toX, int toY, CancellationToken cancel = default) =>
-        actions.PerformAsync(new DragCommand(new Point(fromX, fromY), new Point(toX, toY)), cancel);
+    public Task<string> Drag(
+        int fromX,
+        int fromY,
+        int toX,
+        int toY,
+        [Description(IntentHelp)] string? intent = null,
+        CancellationToken cancel = default) =>
+        actions.PerformAsync(new DragCommand(new Point(fromX, fromY), new Point(toX, toY)), intent, cancel);
 
     [McpServerTool(Name = "scroll")]
     [Description("Move the mouse to (x, y) and turn the scroll wheel there." + Animated)]
@@ -57,8 +69,9 @@ internal sealed class WinboxTools(GuestClient guest, SandboxLauncher launcher, D
         [Description("Screen y in pixels from the top edge.")] int y,
         [Description("Wheel notches: positive scrolls up, negative scrolls down. 3 is about one screenful of text.")]
         int notches,
+        [Description(IntentHelp)] string? intent = null,
         CancellationToken cancel = default) =>
-        actions.PerformAsync(new ScrollCommand(new Point(x, y), notches), cancel);
+        actions.PerformAsync(new ScrollCommand(new Point(x, y), notches), intent, cancel);
 
     [McpServerTool(Name = "type_text")]
     [Description("Type text into whatever has keyboard focus, exactly as given (newlines press Enter)."
@@ -66,8 +79,9 @@ internal sealed class WinboxTools(GuestClient guest, SandboxLauncher launcher, D
         + " so a person can watch, so long text takes a while.")]
     public Task<string> TypeText(
         [Description("The text to type.")] string text,
+        [Description(IntentHelp)] string? intent = null,
         CancellationToken cancel = default) =>
-        actions.PerformAsync(DesktopRequests.TypeText(text), cancel);
+        actions.PerformAsync(DesktopRequests.TypeText(text), intent, cancel);
 
     [McpServerTool(Name = "press_key")]
     [Description("Press a key or key combination, e.g. \"enter\", \"ctrl+l\", \"alt+f4\", \"win+r\","
@@ -75,16 +89,18 @@ internal sealed class WinboxTools(GuestClient guest, SandboxLauncher launcher, D
         + " arrows (up/down/left/right), home, end, pageup, pagedown; modifiers ctrl, shift, alt, win.")]
     public Task<string> PressKey(
         [Description("Key names joined with '+'.")] string combo,
+        [Description(IntentHelp)] string? intent = null,
         CancellationToken cancel = default) =>
-        actions.PerformAsync(DesktopRequests.PressKey(combo), cancel);
+        actions.PerformAsync(DesktopRequests.PressKey(combo), intent, cancel);
 
     [McpServerTool(Name = "run_program")]
     [Description("Start a program inside the sandbox, the way the Win+R Run dialog would, e.g. \"notepad\","
         + " \"msedge https://example.com\" or \"cmd /k dir\". Returns once launched; take a screenshot to see it.")]
     public Task<string> RunProgram(
         [Description("The program and its arguments.")] string command,
+        [Description(IntentHelp)] string? intent = null,
         CancellationToken cancel = default) =>
-        actions.PerformAsync(DesktopRequests.Run(command), cancel);
+        actions.PerformAsync(DesktopRequests.Run(command), intent, cancel);
 
     [McpServerTool(Name = "status", ReadOnly = true)]
     [Description("Report whether the winbox sandbox is running, whether its helper responds,"

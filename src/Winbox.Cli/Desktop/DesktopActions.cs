@@ -1,39 +1,15 @@
-using System.Globalization;
-using System.Text;
 using Winbox.Core;
 using Winbox.Protocol;
 
 namespace Winbox.Cli.Desktop;
 
 /// <summary>Performs input actions on the guest desktop and reports what was done.</summary>
-internal sealed class DesktopActions(GuestClient guest)
+internal sealed class DesktopActions(ActionSender sender)
 {
-    // The guest types at a human pace (about 50 ms a key), so long text is sent in pieces
-    // that each finish well within the guest client's reply timeout.
-    private const int MaxCharsPerRequest = 120;
-
-    public async Task<string> PerformAsync(Command command, CancellationToken cancel)
+    /// <param name="intent">Why the agent acts, shown to people watching; null for a generic caption.</param>
+    public async Task<string> PerformAsync(Command command, string? intent, CancellationToken cancel)
     {
-        foreach (var part in SplitForPacing(command)) await guest.SendAsync(part, cancel);
+        await sender.SendAsync(command, intent, cancel);
         return ActionText.Describe(command);
-    }
-
-    private static IEnumerable<Command> SplitForPacing(Command command) =>
-        command is TypeTextCommand typing
-            ? Chunk(typing.Text).Select(text => new TypeTextCommand(text))
-            : [command];
-
-    private static IEnumerable<string> Chunk(string text)
-    {
-        var elements = StringInfo.GetTextElementEnumerator(text);
-        var chunk = new StringBuilder();
-        while (elements.MoveNext())
-        {
-            chunk.Append(elements.GetTextElement());
-            if (chunk.Length < MaxCharsPerRequest) continue;
-            yield return chunk.ToString();
-            chunk.Clear();
-        }
-        if (chunk.Length > 0) yield return chunk.ToString();
     }
 }

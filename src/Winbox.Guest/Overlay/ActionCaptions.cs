@@ -13,7 +13,7 @@ internal static class ActionCaptions
         ClickCommand c => ClickVerb(c),
         MoveCommand => "Moving the pointer",
         DragCommand => "Dragging",
-        ScrollCommand s => s.Notches > 0 ? "Scrolling up" : "Scrolling down",
+        ScrollCommand s => s.Notches >= 0 ? "Scrolling up" : "Scrolling down",
         TypeTextCommand t => $"Typing “{Shorten(t.Text)}”",
         PressKeyCommand k => $"Pressing {k.Combo}",
         RunCommand r => $"Opening {Shorten(r.CommandLine)}",
@@ -25,13 +25,17 @@ internal static class ActionCaptions
     {
         (MouseButton.Right, _) => "Right-clicking",
         (MouseButton.Middle, _) => "Middle-clicking",
-        (_, >= 2) => "Double-clicking",
+        (_, 2) => "Double-clicking",
+        (_, >= 3) => "Triple-clicking",
         _ => "Clicking",
     };
 
     private static string Shorten(string text)
     {
-        var singleLine = text.Replace("\r", "").Replace('\n', ' ');
-        return singleLine.Length <= MaxQuotedLength ? singleLine : singleLine.Substring(0, MaxQuotedLength) + "…";
+        var singleLine = text.Replace("\r\n", " ").Replace('\r', ' ').Replace('\n', ' ');
+        if (singleLine.Length <= MaxQuotedLength) return singleLine;
+        // Never cut between the two halves of a surrogate pair, or GDI+ draws a broken glyph.
+        var cut = char.IsHighSurrogate(singleLine[MaxQuotedLength - 1]) ? MaxQuotedLength - 1 : MaxQuotedLength;
+        return singleLine.Substring(0, cut) + "…";
     }
 }

@@ -8,13 +8,14 @@ namespace Winbox.Guest;
 /// <summary>Turns one decoded command into a screenshot, an input event, or a process launch.</summary>
 internal sealed class CommandExecutor(ScreenCapture screen, InputInjector input, IActivityFeedback feedback)
 {
+    private readonly Narrator _narrator = new();
+
     public Reply Execute(string imagePath, string line)
     {
         try
         {
             var command = CommandCodec.Decode(line);
-            if (ActionCaptions.Describe(command) is { } caption) feedback.Announce(caption);
-            return Run(imagePath, command);
+            using (ShowCaption(command)) return Run(imagePath, command);
         }
         catch (Exception error)
         {
@@ -22,11 +23,16 @@ internal sealed class CommandExecutor(ScreenCapture screen, InputInjector input,
         }
     }
 
+    /// <summary>Keeps the command's caption on screen while it runs, or returns null when it has none.</summary>
+    private CaptionKeepAlive? ShowCaption(Command command) =>
+        _narrator.CaptionFor(command) is { } caption ? new CaptionKeepAlive(feedback, caption) : null;
+
     private Reply Run(string imagePath, Command command)
     {
         switch (command)
         {
             case ScreenshotCommand: return TakeScreenshot(imagePath);
+            case SayCommand: break; // Showing its caption is all it does.
             case ClickCommand c: input.Click(c.At, c.Button, c.Count); break;
             case MoveCommand m: input.MoveTo(m.To); break;
             case DragCommand d: input.Drag(d.From, d.To); break;

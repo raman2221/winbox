@@ -3,13 +3,18 @@ using Winbox.Core.Terminal;
 
 namespace Winbox.Cli.Viewer;
 
-/// <summary>What the renderer and the input side share: the cell size and where the image was last drawn.</summary>
+/// <summary>
+/// What the renderer and the input side share: the cell size, where the image was last drawn,
+/// and any notice waiting to be shown on the status line.
+/// </summary>
 internal sealed class ViewerState
 {
     // The size Windows Terminal reports for its virtual Sixel cell; used when the terminal stays silent.
     private static readonly Size FallbackCell = new(10, 20);
+    private static readonly TimeSpan NoticeDuration = TimeSpan.FromSeconds(4);
 
     private readonly TaskCompletionSource cellReported = new(TaskCreationOptions.RunContinuationsAsynchronously);
+    private readonly StatusNotice notice = new(NoticeDuration);
     private readonly Lock gate = new();
     private Size cell = FallbackCell;
     private ImageLayout? layout;
@@ -25,6 +30,10 @@ internal sealed class ViewerState
         get { lock (gate) return layout; }
         set { lock (gate) layout = value; }
     }
+
+    public void ShowNotice(string message) => notice.Post(message, DateTimeOffset.UtcNow);
+
+    public string? CurrentNotice() => notice.CurrentAt(DateTimeOffset.UtcNow);
 
     public void ReportCell(Size reported)
     {

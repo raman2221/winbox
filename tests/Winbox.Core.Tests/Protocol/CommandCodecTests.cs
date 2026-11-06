@@ -21,6 +21,10 @@ public class CommandCodecTests
         new PressKeyCommand("ctrl+shift+esc"),
         new RunCommand(@"cmd /k dir C:\"),
         new RunCommand("notepad \"C:\\some file.txt\"\nécho ✓"),
+        new SayCommand("Opening the Start menu"),
+        new SayCommand(""),
+        new SayCommand("Ouvrir « Démarrer » 世界 🚀👩‍💻"),
+        new SayCommand("line one\r\nline two"),
         new ShutdownCommand(),
     };
 
@@ -39,6 +43,25 @@ public class CommandCodecTests
     public void Encode_TextWithSpacesAndNewlines_ProducesOneLineWithTwoFields()
     {
         var command = new TypeTextCommand("a b\nc d");
+
+        var line = CommandCodec.Encode(command);
+
+        Assert.DoesNotContain('\n', line);
+        Assert.Equal(2, line.Split(' ').Length);
+    }
+
+    [Fact]
+    public void Encode_SayCommand_WritesSayVerbAndBase64Caption()
+    {
+        var line = CommandCodec.Encode(new SayCommand("Hi"));
+
+        Assert.Equal("say SGk=", line);
+    }
+
+    [Fact]
+    public void Encode_CaptionWithSpacesAndNewlines_ProducesOneLineWithTwoFields()
+    {
+        var command = new SayCommand("Opening the\nStart menu");
 
         var line = CommandCodec.Encode(command);
 
@@ -71,6 +94,7 @@ public class CommandCodecTests
     [InlineData("type")]
     [InlineData("key")]
     [InlineData("run")]
+    [InlineData("say")]
     public void Decode_MissingArgument_ThrowsProtocolException(string line)
     {
         Assert.Throws<ProtocolException>(() => CommandCodec.Decode(line));
@@ -98,6 +122,7 @@ public class CommandCodecTests
     [Theory]
     [InlineData("type not*base64")]
     [InlineData("run abc")]
+    [InlineData("say not*base64")]
     public void Decode_TextThatIsNotBase64_ThrowsProtocolException(string line)
     {
         Assert.Throws<ProtocolException>(() => CommandCodec.Decode(line));

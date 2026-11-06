@@ -20,12 +20,18 @@ public static class ViewerGeometry
     }
 
     /// <summary>
-    /// The status text, cut to leave the last column empty so writing it never triggers a wrap.
+    /// The status text; a notice, when there is one, replaces the control hint. It is cut to leave
+    /// the last column empty so writing it never triggers a wrap.
     /// </summary>
-    public static string StatusLine(Size guest, int columns)
+    public static string StatusLine(Size guest, string? notice, int columns)
     {
-        var text = $"winbox · {guest.Width}x{guest.Height} · Ctrl+Q quit · click/type to control";
+        var detail = notice is null ? "click/type to control" : Printable(notice);
+        var text = $"winbox · {guest.Width}x{guest.Height} · Ctrl+Q quit · {detail}";
         var room = Math.Max(0, columns - 1);
         return text.Length <= room ? text : text[..room];
     }
+
+    // Notices carry guest error text; a stray control character would move the cursor or start an escape.
+    private static string Printable(string text) =>
+        string.Concat(text.Select(ch => char.IsControl(ch) ? ' ' : ch));
 }

@@ -37,15 +37,20 @@ internal sealed class TerminalScreen(TextWriter output) : IDisposable
         clearPending = false;
         output.Write(Csi + "H");
         output.Write(sixel);
-        output.Write($"{Csi}{status.Row};1H{status.Text}{Csi}K");
+        output.Write(StatusSequence(status));
         WriteNow(EndUpdate);
     }
+
+    /// <summary>Rewrites only the status line, leaving the picture untouched.</summary>
+    public void DrawStatus(StatusText status) => WriteNow(BeginUpdate + StatusSequence(status) + EndUpdate);
 
     public void Dispose()
     {
         WriteNow(LeaveSequence);
         output.Dispose();
     }
+
+    private static string StatusSequence(StatusText status) => $"{Csi}{status.Row};1H{status.Text}{Csi}K";
 
     private void WriteNow(string text)
     {

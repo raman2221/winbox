@@ -6,8 +6,9 @@ namespace Winbox.Cli.Viewer;
 public static class ViewerSession
 {
     /// <summary>
-    /// Runs until Ctrl+Q or cancellation. The terminal is always restored before this returns or
-    /// throws; a <see cref="WinboxException"/> from the guest is rethrown for the CLI to print.
+    /// Runs until Ctrl+Q or cancellation. Single failed commands or frames only show on the status
+    /// line; when the guest stays unreachable, <see cref="GuestUnavailableException"/> is rethrown
+    /// for the CLI to print. The terminal is always restored before this returns or throws.
     /// </summary>
     public static async Task RunAsync(GuestClient guest, CancellationToken cancel)
     {
@@ -22,7 +23,7 @@ public static class ViewerSession
     private static LiveViewer Build(GuestClient guest, TerminalScreen screen)
     {
         var state = new ViewerState();
-        var commands = new CommandQueue(guest);
+        var commands = new CommandQueue(guest, state);
         var input = new InputDispatcher(new InputReader(Console.OpenStandardInput()), state, commands);
         return new LiveViewer(new FrameRenderer(guest, screen, state), input, commands);
     }

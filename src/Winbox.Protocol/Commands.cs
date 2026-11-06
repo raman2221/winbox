@@ -25,4 +25,10 @@ public sealed record PressKeyCommand(string Combo) : Command;
 /// <summary>Starts a program inside the guest, e.g. "notepad" or "cmd /k dir".</summary>
 public sealed record RunCommand(string CommandLine) : Command;
 
+/// <summary>
+/// Tells people watching why the agent takes its next action, e.g. "Opening the Start menu".
+/// The guest shows this caption in place of its own generic one for that action.
+/// </summary>
+public sealed record SayCommand(string Caption) : Command;
+
 public sealed record ShutdownCommand : Command;

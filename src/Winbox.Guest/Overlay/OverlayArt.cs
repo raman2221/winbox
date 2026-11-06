@@ -60,7 +60,7 @@ internal static class OverlayArt
     private static void DrawPill(Graphics graphics, Rectangle bounds, double opacity)
     {
         using var path = RoundedRectangle(bounds, bounds.Height / 2);
-        using var fill = new SolidBrush(Color.FromArgb((int)(225 * opacity), 22, 22, 30));
+        using var fill = new SolidBrush(WithAlpha(Color.FromArgb(22, 22, 30), 225 * opacity));
         using var border = new Pen(WithAlpha(Accent, 160 * opacity), 1.5f);
         graphics.FillPath(fill, path);
         graphics.DrawPath(border, path);
@@ -69,7 +69,7 @@ internal static class OverlayArt
     private static void DrawCaptionContent(Graphics graphics, string text, int height, double opacity)
     {
         using var dot = new SolidBrush(WithAlpha(Accent, 255 * opacity));
-        using var ink = new SolidBrush(Color.FromArgb((int)(255 * opacity), 245, 245, 250));
+        using var ink = new SolidBrush(WithAlpha(Color.FromArgb(245, 245, 250), 255 * opacity));
         graphics.FillEllipse(dot, CaptionPadX, (height - DotSize) / 2f, DotSize, DotSize);
         graphics.DrawString(text, CaptionFont, ink, CaptionPadX + DotSize + DotGap, CaptionPadY);
     }
