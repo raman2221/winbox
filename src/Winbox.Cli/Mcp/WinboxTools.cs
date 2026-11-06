@@ -98,7 +98,7 @@ internal sealed class WinboxTools(GuestClient guest, SandboxLauncher launcher, D
         actions.PerformAsync(DesktopRequests.PressKey(combo), intent, cancel);
 
     [McpServerTool(Name = "run_program")]
-    [Description("Start a program inside the sandbox, the way the Win+R Run dialog would, e.g. \"notepad\","
+    [Description("Start a program inside the sandbox, the way the Win+R Run dialog would, e.g. \"msedge\","
         + " \"msedge https://example.com\" or \"cmd /k dir\". Returns once launched; take a screenshot to see it.")]
     public Task<string> RunProgram(
         [Description("The program and its arguments.")] string command,

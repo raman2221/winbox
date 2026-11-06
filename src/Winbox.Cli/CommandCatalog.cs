@@ -37,6 +37,6 @@ internal static class CommandCatalog
             InputParsers.Scroll, actions),
         new InputCommand(new("type <text...>", "Type text into the focused window"), InputParsers.TypeText, actions),
         new InputCommand(new("key <combo>", "Press a key combo, e.g. ctrl+shift+esc"), InputParsers.PressKey, actions),
-        new InputCommand(new("run <command line...>", "Start a program, e.g. notepad"), InputParsers.Run, actions),
+        new InputCommand(new("run <command line...>", "Start a program, e.g. msedge"), InputParsers.Run, actions),
     ];
 }

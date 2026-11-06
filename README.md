@@ -8,15 +8,21 @@ You sit back and watch it work: the cursor glides across the screen, clicks land
 by key, and a caption at the bottom tells you what it's doing. It browses, opens apps and fills in forms like a
 human at the keyboard, while your own mouse, keyboard and clipboard stay yours.
 
-<!--
-  DEMO GIF GOES HERE (top priority before launch).
-  Show: the native Windows Sandbox window, an agent opening Edge, typing a search and clicking a result,
-  with the violet cursor halo, click ripples and the caption pill visible.
-  ![winbox demo](docs/demo.gif)
--->
+![An agent opening Edge in Windows Sandbox, going to Wikipedia, searching and scrolling, with the cursor halo and captions visible](docs/demo.gif)
 
-> **Status: v0.1, early.** The pieces are built, but nothing has been run end to end inside a real Windows Sandbox
-> yet, including the animated cursor, human-paced typing and on-screen overlay described below. Expect rough edges,
+*Real recording, real time: the agent opens Edge, goes to Wikipedia, searches and reads. The violet halo and the
+caption pill show what it's doing.*
+
+<details>
+<summary>Another run: browsing umich.edu (pauses while the agent read screenshots trimmed)</summary>
+
+![An agent searching umich.edu, opening Computer Science and Engineering, then searching for the library](docs/demo-umich.gif)
+
+MP4 versions: [Wikipedia run](docs/demo-wikipedia.mp4), [umich.edu run](docs/demo-umich.mp4).
+</details>
+
+> **Status: v0.1, early.** Tested end to end in a real Windows Sandbox on Windows 11 Pro: the cursor animation,
+> human-paced typing, the overlay and captions, clicks, typing and scrolling in Edge all work. Expect rough edges,
 > and please [open an issue](https://github.com/raman2221/winbox/issues) when something breaks.
 
 ## What you see
@@ -27,7 +33,7 @@ agent's work watchable:
 - **The agent tells you what it's doing, in its own words.** Every input tool takes an optional `intent`, a short
   phrase such as "Opening the Start menu" or "Searching for flights". A caption pill at the bottom of the sandbox
   screen shows it for the whole action, so you follow the agent's *plan*, not just its clicks. Without an intent
-  the pill falls back to a plain description: "Clicking", "Typing “hello”", "Pressing ctrl+l", "Opening notepad".
+  the pill falls back to a plain description: "Clicking", "Typing “hello”", "Pressing ctrl+l", "Opening msedge".
   From the CLI, add `--why "<text>"` to any input command.
 - **A cursor that moves like a hand.** The pointer glides along an eased, slightly curved path instead of jumping.
   Short hops take about 180 ms and long sweeps up to about 650 ms.
@@ -113,7 +119,7 @@ winbox start                         # boot the sandbox; its window opens on you
 winbox status                        # is the guest helper alive?
 winbox view                          # optional: watch and drive it from Windows Terminal instead
 winbox screenshot shot.png           # grab the sandbox screen
-winbox run notepad --why "Opening Notepad"   # launch a program; the caption says why
+winbox run msedge --why "Opening Edge"        # launch a program; the caption says why
 winbox type "hello from the host"
 winbox stop                          # close the sandbox (and wipe it)
 ```
@@ -221,7 +227,7 @@ Notes:
 | `winbox scroll <x> <y> <notches>` | Scroll at a point (positive is up). |
 | `winbox type <text...>` | Type text. The remaining arguments are joined with spaces. |
 | `winbox key <combo>` | Press a key combo, such as `ctrl+shift+esc`. |
-| `winbox run <command line...>` | Launch a program inside the sandbox, e.g. `winbox run notepad`. Like `run_program`, no `cmd` is involved. |
+| `winbox run <command line...>` | Launch a program inside the sandbox, e.g. `winbox run msedge`. Windows Sandbox has no Store apps (Notepad, Calculator); Edge, cmd, PowerShell and Explorer are there. Like `run_program`, no `cmd` is involved. |
 | `winbox mcp` | Run the MCP server on stdio. |
 | `winbox mcp-config` | Print the `claude mcp add` command for this install. |
 

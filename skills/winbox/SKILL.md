@@ -82,8 +82,9 @@ next one.
 
 Finding icons by pixels is slow and error-prone. Usually there's a more direct route:
 
-- **Launch programs with `run_program`**, for example `notepad`, `mspaint`, `explorer C:\`,
-  `msedge https://example.com` or a full path to an `.exe` (quote paths with spaces: `"C:\My Tools\app.exe" --flag`).
+- **Launch programs with `run_program`**, for example `msedge https://example.com`, `explorer C:\`, `cmd`,
+  `powershell` or a full path to an `.exe` (quote paths with spaces: `"C:\My Tools\app.exe" --flag`). Windows Sandbox
+  has no Store apps, so Notepad, Paint and Calculator aren't available.
 - `run_program` starts the program directly, **not through `cmd`**. `&`, `|`, `>` and `%` are passed to the program
   as plain text. When you need shell features, ask for a shell: `cmd /c dir > C:\out.txt`. If the program doesn't
   exist, you get an error back.
